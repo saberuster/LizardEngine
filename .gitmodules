@@ -1,0 +1,3 @@
+[submodule "LizardEngine/vendor/spdlog"]
+	path = LizardEngine/vendor/spdlog
+	url = https://github.com/gabime/spdlog.git
