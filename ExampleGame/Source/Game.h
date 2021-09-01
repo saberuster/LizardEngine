@@ -3,7 +3,6 @@
 #include <windows.h>
 #include <wrl.h>
 #include <dxgi1_4.h>
-#include <d3d12.h>
 #include <D3Dcompiler.h>
 #include <DirectXMath.h>
 #include <DirectXPackedVector.h>
@@ -20,6 +19,7 @@
 #include <sstream>
 #include <cassert>
 #include "LizardEngine.h"
+#include "CD3D12.h"
 
 using Microsoft::WRL::ComPtr;
 
@@ -363,118 +363,12 @@ inline void ThrowIfFailed(HRESULT hr)
     }
 }
 
-struct CD3DX12_RESOURCE_BARRIER : public D3D12_RESOURCE_BARRIER
-{
-    CD3DX12_RESOURCE_BARRIER() = default;
-    explicit CD3DX12_RESOURCE_BARRIER(const D3D12_RESOURCE_BARRIER &o) noexcept : D3D12_RESOURCE_BARRIER(o)
-    {
-    }
-    static inline CD3DX12_RESOURCE_BARRIER Transition(
-        _In_ ID3D12Resource *pResource,
-        D3D12_RESOURCE_STATES stateBefore,
-        D3D12_RESOURCE_STATES stateAfter,
-        UINT subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES,
-        D3D12_RESOURCE_BARRIER_FLAGS flags = D3D12_RESOURCE_BARRIER_FLAG_NONE) noexcept
-    {
-        CD3DX12_RESOURCE_BARRIER result = {};
-        D3D12_RESOURCE_BARRIER &barrier = result;
-        result.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
-        result.Flags = flags;
-        barrier.Transition.pResource = pResource;
-        barrier.Transition.StateBefore = stateBefore;
-        barrier.Transition.StateAfter = stateAfter;
-        barrier.Transition.Subresource = subresource;
-        return result;
-    }
-    static inline CD3DX12_RESOURCE_BARRIER Aliasing(
-        _In_ ID3D12Resource *pResourceBefore,
-        _In_ ID3D12Resource *pResourceAfter) noexcept
-    {
-        CD3DX12_RESOURCE_BARRIER result = {};
-        D3D12_RESOURCE_BARRIER &barrier = result;
-        result.Type = D3D12_RESOURCE_BARRIER_TYPE_ALIASING;
-        barrier.Aliasing.pResourceBefore = pResourceBefore;
-        barrier.Aliasing.pResourceAfter = pResourceAfter;
-        return result;
-    }
-    static inline CD3DX12_RESOURCE_BARRIER UAV(
-        _In_ ID3D12Resource *pResource) noexcept
-    {
-        CD3DX12_RESOURCE_BARRIER result = {};
-        D3D12_RESOURCE_BARRIER &barrier = result;
-        result.Type = D3D12_RESOURCE_BARRIER_TYPE_UAV;
-        barrier.UAV.pResource = pResource;
-        return result;
-    }
-};
-struct CD3DX12_DEFAULT
-{
-};
-struct CD3DX12_CPU_DESCRIPTOR_HANDLE : public D3D12_CPU_DESCRIPTOR_HANDLE
-{
-    CD3DX12_CPU_DESCRIPTOR_HANDLE() = default;
-    explicit CD3DX12_CPU_DESCRIPTOR_HANDLE(const D3D12_CPU_DESCRIPTOR_HANDLE &o) noexcept : D3D12_CPU_DESCRIPTOR_HANDLE(o)
-    {
-    }
-    CD3DX12_CPU_DESCRIPTOR_HANDLE(CD3DX12_DEFAULT)
-    noexcept { ptr = 0; }
-    CD3DX12_CPU_DESCRIPTOR_HANDLE(_In_ const D3D12_CPU_DESCRIPTOR_HANDLE &other, INT offsetScaledByIncrementSize)
-    noexcept
-    {
-        InitOffsetted(other, offsetScaledByIncrementSize);
-    }
-    CD3DX12_CPU_DESCRIPTOR_HANDLE(_In_ const D3D12_CPU_DESCRIPTOR_HANDLE &other, INT offsetInDescriptors, UINT descriptorIncrementSize)
-    noexcept
-    {
-        InitOffsetted(other, offsetInDescriptors, descriptorIncrementSize);
-    }
-    CD3DX12_CPU_DESCRIPTOR_HANDLE &Offset(INT offsetInDescriptors, UINT descriptorIncrementSize) noexcept
-    {
-        ptr = SIZE_T(INT64(ptr) + INT64(offsetInDescriptors) * INT64(descriptorIncrementSize));
-        return *this;
-    }
-    CD3DX12_CPU_DESCRIPTOR_HANDLE &Offset(INT offsetScaledByIncrementSize) noexcept
-    {
-        ptr = SIZE_T(INT64(ptr) + INT64(offsetScaledByIncrementSize));
-        return *this;
-    }
-    bool operator==(_In_ const D3D12_CPU_DESCRIPTOR_HANDLE &other) const noexcept
-    {
-        return (ptr == other.ptr);
-    }
-    bool operator!=(_In_ const D3D12_CPU_DESCRIPTOR_HANDLE &other) const noexcept
-    {
-        return (ptr != other.ptr);
-    }
-    CD3DX12_CPU_DESCRIPTOR_HANDLE &operator=(const D3D12_CPU_DESCRIPTOR_HANDLE &other) noexcept
-    {
-        ptr = other.ptr;
-        return *this;
-    }
-
-    inline void InitOffsetted(_In_ const D3D12_CPU_DESCRIPTOR_HANDLE &base, INT offsetScaledByIncrementSize) noexcept
-    {
-        InitOffsetted(*this, base, offsetScaledByIncrementSize);
-    }
-
-    inline void InitOffsetted(_In_ const D3D12_CPU_DESCRIPTOR_HANDLE &base, INT offsetInDescriptors, UINT descriptorIncrementSize) noexcept
-    {
-        InitOffsetted(*this, base, offsetInDescriptors, descriptorIncrementSize);
-    }
-
-    static inline void InitOffsetted(_Out_ D3D12_CPU_DESCRIPTOR_HANDLE &handle, _In_ const D3D12_CPU_DESCRIPTOR_HANDLE &base, INT offsetScaledByIncrementSize) noexcept
-    {
-        handle.ptr = SIZE_T(INT64(base.ptr) + INT64(offsetScaledByIncrementSize));
-    }
-
-    static inline void InitOffsetted(_Out_ D3D12_CPU_DESCRIPTOR_HANDLE &handle, _In_ const D3D12_CPU_DESCRIPTOR_HANDLE &base, INT offsetInDescriptors, UINT descriptorIncrementSize) noexcept
-    {
-        handle.ptr = SIZE_T(INT64(base.ptr) + INT64(offsetInDescriptors) * INT64(descriptorIncrementSize));
-    }
-};
+using namespace DirectX;
 
 struct Vertex
 {
+    XMFLOAT3 position;
+    XMFLOAT4 color;
 };
 
 class GameApp : public LizardEngine::IApplication
@@ -482,24 +376,47 @@ class GameApp : public LizardEngine::IApplication
 public:
     virtual void Init() override;
     virtual void Tick() override;
-    virtual void Run() override;
     virtual void Quit() override;
 
     void InitPipeline();
-    void LoadAsset();
+    void LoadAssets();
+
+    void WaitForPreviosFrame();
+
+    std::wstring GetAssetFullPath(LPCWSTR assetName);
 
 private:
-    static const UINT FrameCount = 2;
-
     // Pipeline objects.
-    ComPtr<IDXGISwapChain3> swapChain;
     ComPtr<ID3D12Device> device;
-    ComPtr<ID3D12Resource> renderTargets[FrameCount];
-    ComPtr<ID3D12CommandAllocator> commandAllocator;
+
+    // 命令队列(commandQueue) 是 CPU 与 GPU 沟通的桥梁，为一个环形缓冲区(ring buffer)
+    // 我们在 CPU 端将命令提交到队列中，GPU 从队列中拿到命令执行，从命令的提交到执行是一个异步操作
     ComPtr<ID3D12CommandQueue> commandQueue;
+    // 我们通过 commandList 向 GPU 提交命令
+    ComPtr<ID3D12GraphicsCommandList> commandList;
+    // 我们提交的命令都会保存在 commandAllocator 中
+    ComPtr<ID3D12CommandAllocator> commandAllocator;
+
+    // 交换链
+    // 一般都是 双缓冲(double buffering): 前台缓冲区(front buffer) 和 后台缓冲区(back buffer)
+    // 前台缓冲区存储当前屏幕上显示的纹理, 后台缓冲区存储下一帧的画面, 然后通过交换前后缓冲区来显示下一帧内容, 这个操作叫做 presenting (在 API 中有对应的方法)
+    // 据说可以为 三重缓冲 (triple buffering) 暂时还没研究
+    // @see https://docs.microsoft.com/zh-cn/windows/win32/direct3d12/swap-chains
+    // @see 《DirectX12 3D 游戏开发实战》4.1.4
+    ComPtr<IDXGISwapChain3> swapChain;
+    // 交换链的缓冲区数量, 我们使用双缓冲，所以这里是 2
+    static constexpr UINT FrameCount = 2;
+    ComPtr<ID3D12Resource> renderTargets[FrameCount];
     ComPtr<ID3D12DescriptorHeap> rtvHeap;
     ComPtr<ID3D12PipelineState> pipelineState;
-    ComPtr<ID3D12GraphicsCommandList> commandList;
+    // 根签名
+    // 根签名像一个箱子，，里面保存需要绑定到渲染流水线上的资源和着色器输入寄存器映射关系
+    // 根签名有大小的限制（64DWORD）
+    //
+    // 根参数像占用箱子空间的物品
+    // 每个根参数占用一定大小的根签名空间，只要不超过根签名的大小限制用户可以随意规划
+    // @see《DirectX12 3D 游戏开发实战》7.6
+    ComPtr<ID3D12RootSignature> rootSignature;
     UINT rtvDescriptorSize;
 
     // Synchronization objects.
@@ -507,4 +424,10 @@ private:
     HANDLE fenceEvent;
     ComPtr<ID3D12Fence> fence;
     UINT64 fenceValue;
+
+    // Render Resources
+    ComPtr<ID3D12Resource> vertexBuffer;
+    D3D12_VERTEX_BUFFER_VIEW vertexBufferView;
+
+    std::wstring assetsPath;
 };
