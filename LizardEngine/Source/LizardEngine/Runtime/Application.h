@@ -1,7 +1,6 @@
 #pragma once
 
 #include "Macros.h"
-
 namespace LizardEngine
 {
 	class LIZARD_API IApplication

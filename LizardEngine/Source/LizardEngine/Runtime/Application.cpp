@@ -1,7 +1,7 @@
 #include "Application.h"
-#include <iostream>
 
-namespace LizardEngine {
+namespace LizardEngine
+{
 
 	IApplication::IApplication()
 	{
@@ -12,7 +12,3 @@ namespace LizardEngine {
 	}
 
 }
-
-
-
-

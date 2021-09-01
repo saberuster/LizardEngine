@@ -1,8 +1,6 @@
 #include "Logger.h"
 #include <format>
-#include <iostream>
 
-void Logger::PrintLog()
+namespace LizardEngine
 {
-	std::cout << std::format("{}", "hello world");
 }

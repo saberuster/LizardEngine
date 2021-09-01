@@ -2,7 +2,9 @@
 	"files.associations": {
 		"iostream": "cpp",
 		"cassert": "cpp",
-		"stdexcept": "cpp"
+		"stdexcept": "cpp",
+		"xstring": "cpp",
+		"format": "cpp"
 	},
 	"C_Cpp.default.configurationProvider": "ms-vscode.cmake-tools"
 }
