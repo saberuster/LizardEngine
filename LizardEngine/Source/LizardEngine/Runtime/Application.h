@@ -4,7 +4,6 @@
 
 namespace LizardEngine
 {
-
 	class LIZARD_API IApplication
 	{
 	public:
@@ -17,5 +16,6 @@ namespace LizardEngine
 		virtual void Init() = 0;
 		virtual void Tick() = 0;
 		virtual void Run() = 0;
+		virtual void Quit() = 0;
 	};
 }

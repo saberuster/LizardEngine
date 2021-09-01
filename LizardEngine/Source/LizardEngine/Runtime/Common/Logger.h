@@ -1,6 +1,6 @@
 #pragma once
 
-#include "LizardEngine/Runtime/Macros.h"
+#include "Runtime/Macros.h"
 
 class LIZARD_API Logger
 {
