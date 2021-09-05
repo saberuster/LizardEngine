@@ -1,4 +1,3 @@
-module;
 export module LizardEngine.Common : EngineTimer;
 
 import : Logger;

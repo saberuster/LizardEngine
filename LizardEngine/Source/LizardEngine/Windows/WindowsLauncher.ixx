@@ -24,8 +24,6 @@ HWND WindowsLauncher::hwnd = nullptr;
 
 int WindowsLauncher::Run(IApplication *Application, HINSTANCE hInstance, int nCmdShow)
 {
-    OutputDebugString(L"test");
-
     WNDCLASSEX windowClass = {0};
     windowClass.cbSize = sizeof(WNDCLASSEX);
     windowClass.style = CS_HREDRAW | CS_VREDRAW;

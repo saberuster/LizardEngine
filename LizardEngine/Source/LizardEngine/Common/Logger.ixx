@@ -29,7 +29,7 @@ public:
 	template <typename... _Types>
 	void PrintLog(std::wstring_view format, const _Types &..._Args)
 	{
-		OutputDebugString(std::format(L"[{}] {}", L"DEBUG", _Args...).c_str());
+		OutputDebugString(std::format(L"[{}] {}\r\n", L"DEBUG", _Args...).c_str());
 	}
 
 private:

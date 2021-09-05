@@ -1,20 +1,21 @@
 module;
 
-#include <windows.h>
-#include <wrl.h>
-#include <dxgi1_4.h>
-#include <D3Dcompiler.h>
-#include <DirectXMath.h>
-#include <DirectXPackedVector.h>
-#include <DirectXColors.h>
-#include <DirectXCollision.h>
-#include "CD3D12.h"
+//#include "Windows.h"
+#include "d3d12.h"
+#include "wrl.h"
+#include "dxgi1_4.h"
+#include "D3Dcompiler.h"
+#include "DirectXMath.h"
+#include "DirectXPackedVector.h"
+#include "DirectXColors.h"
+#include "DirectXCollision.h"
+#pragma warning(disable : 5050)
 
 export module ExampleGame;
 
+import D3D12Module;
 import std.core;
 import LizardEngine;
-import LizardEngine.Common;
 import LizardEngine.Windows;
 
 using Microsoft::WRL::ComPtr;
@@ -369,6 +370,8 @@ struct Vertex
 export class ExampleGame : public IApplication
 {
 public:
+    ExampleGame(std::wstring &&inAssetsPath);
+
     virtual void Init() override;
     virtual void Tick() override;
     virtual void Quit() override;
@@ -384,7 +387,10 @@ private:
     // Pipeline objects.
     ComPtr<ID3D12Device> device;
 
+    // 视口
     CD3DX12_VIEWPORT viewport;
+    // 裁剪矩形
+    CD3DX12_RECT scissorRect;
 
     // 命令队列(commandQueue) 是 CPU 与 GPU 沟通的桥梁，为一个环形缓冲区(ring buffer)
     // 我们在 CPU 端将命令提交到队列中，GPU 从队列中拿到命令执行，从命令的提交到执行是一个异步操作
@@ -420,6 +426,10 @@ private:
     // 每个根参数占用一定大小的根签名空间，只要不超过根签名的大小限制用户可以随意规划
     // @see《DirectX12 3D 游戏开发实战》7.6
     ComPtr<ID3D12RootSignature> rootSignature;
+
+    // 描述符大小
+    // 因为 在不同的 GPU 平台描述符的大小不同，所以我们在初始化的时候需要手动获取记录一下
+    // @see《DirectX12 3D 游戏开发实战》4.3.2
     UINT rtvDescriptorSize;
 
     // Synchronization objects.
@@ -434,6 +444,14 @@ private:
 
     std::wstring assetsPath;
 };
+
+ExampleGame::ExampleGame(std::wstring &&inAssetsPath)
+    : assetsPath(inAssetsPath),
+      viewport(0.f, 0.f, 1920.f, 1080.f),
+      scissorRect(0, 0, 1920.0l, 1080.0l),
+      rtvDescriptorSize(0)
+{
+}
 
 void ExampleGame::Init()
 {
@@ -454,12 +472,24 @@ void ExampleGame::Tick()
     commandList->ResourceBarrier(1, &_t1);
 
     //---- Render Resource begin
+    // Set necessary state.
+    commandList->SetGraphicsRootSignature(rootSignature.Get());
+    commandList->RSSetViewports(1, &viewport);
+    commandList->RSSetScissorRects(1, &scissorRect);
+
+    auto _tt = CD3DX12_RESOURCE_BARRIER::Transition(renderTargets[frameIndex].Get(), D3D12_RESOURCE_STATE_PRESENT, D3D12_RESOURCE_STATE_RENDER_TARGET);
+    // Indicate that the back buffer will be used as a render target.
+    commandList->ResourceBarrier(1, &_tt);
 
     CD3DX12_CPU_DESCRIPTOR_HANDLE rtvHandle(rtvHeap->GetCPUDescriptorHandleForHeapStart(), frameIndex, rtvDescriptorSize);
+    commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
 
     // Record commands.
     const float clearColor[] = {0.0f, 0.2f, 0.4f, 1.0f};
     commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+    commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    commandList->IASetVertexBuffers(0, 1, &vertexBufferView);
+    commandList->DrawInstanced(3, 1, 0, 0);
 
     //---- Render Resource end
 
@@ -590,9 +620,9 @@ void ExampleGame::LoadAssets()
 #else
         UINT compileFlags = 0;
 #endif
-
-        ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"test.hlsl").c_str(), nullptr, nullptr, "VSMain", "vs_5_0", compileFlags, 0, &vertexShader, nullptr));
-        ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"test.hlsl").c_str(), nullptr, nullptr, "PSMain", "ps_5_0", compileFlags, 0, &pixelShader, nullptr));
+        Logger::Instance().PrintLog(L"find shader file: {}", GetAssetFullPath(L"Shader\\test.hlsl"));
+        ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"Shader\\test.hlsl").c_str(), nullptr, nullptr, "VSMain", "vs_5_0", compileFlags, 0, &vertexShader, nullptr));
+        ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"Shader\\test.hlsl").c_str(), nullptr, nullptr, "PSMain", "ps_5_0", compileFlags, 0, &pixelShader, nullptr));
 
         // Define the vertex input layout.
         D3D12_INPUT_ELEMENT_DESC inputElementDescs[] =
