@@ -448,7 +448,7 @@ private:
 ExampleGame::ExampleGame(std::wstring &&inAssetsPath)
     : assetsPath(inAssetsPath),
       viewport(0.f, 0.f, 1920.f, 1080.f),
-      scissorRect(0, 0, 1920.0l, 1080.0l),
+      scissorRect(0, 0, (long)1920.0, (long)1080.0),
       rtvDescriptorSize(0)
 {
 }

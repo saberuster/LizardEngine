@@ -1,3 +1,5 @@
+module;
+#pragma warning(disable : 5050)
 export module LizardEngine.Common : EngineTimer;
 
 import : Logger;

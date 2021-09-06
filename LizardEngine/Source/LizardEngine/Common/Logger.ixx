@@ -1,6 +1,6 @@
 module;
 #include "windows.h"
-
+#pragma warning(disable : 5050)
 export module LizardEngine.Common : Logger;
 import std.core;
 
